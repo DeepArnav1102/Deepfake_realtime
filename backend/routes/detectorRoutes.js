@@ -21,11 +21,11 @@ router.post('/', upload.single('chunk'), async (req, res) => {
     }
 
     // Convert req.file.buffer into a Blob (requires Node 18+)
-    const blob = new Blob([req.file.buffer], { type: req.file.mimetype || 'video/webm' });
+    const blob = new Blob([req.file.buffer], { type: req.file.mimetype || 'image/jpeg' });
 
     // Create a FormData object and append the Blob
     const formData = new FormData();
-    formData.append('chunk', blob, 'chunk.webm');
+    formData.append('chunk', blob, 'frame.jpg');
 
     // Use native fetch to POST the FormData to AI server
     const aiResponse = await fetch(`${aiNgrokUrl}/predict`, {

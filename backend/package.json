@@ -13,11 +13,13 @@
   "description": "",
   "dependencies": {
     "@clerk/clerk-sdk-node": "^4.13.23",
+    "@supabase/supabase-js": "^2.100.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "mongoose": "^9.3.2",
     "multer": "^2.1.1",
+    "socket.io": "^4.8.3",
     "svix": "^1.89.0"
   },
   "devDependencies": {
