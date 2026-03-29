@@ -3,12 +3,11 @@ import { UserButton } from '@clerk/clerk-react';
 
 export default function Detector() {
   const videoRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
+  const canvasRef = useRef(null); // Added canvas reference
   const [isDetecting, setIsDetecting] = useState(false);
-  const [prediction, setPrediction] = useState(null); // { label: 'REAL' | 'FAKE', confidence: float }
+  const [prediction, setPrediction] = useState(null);
 
   useEffect(() => {
-    // Setup the webcam stream
     async function setupWebcam() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -21,9 +20,7 @@ export default function Detector() {
     }
     setupWebcam();
 
-    // Cleanup function
     return () => {
-      stopRecording();
       if (videoRef.current && videoRef.current.srcObject) {
         const tracks = videoRef.current.srcObject.getTracks();
         tracks.forEach(track => track.stop());
@@ -31,76 +28,56 @@ export default function Detector() {
     };
   }, []);
 
-  const sendVideoChunk = async (blob) => {
-    if (!blob || blob.size === 0) return;
-
-    const formData = new FormData();
-    formData.append('chunk', blob, 'chunk.webm');
-
-    try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-      const response = await fetch(`${backendUrl}/api/detect`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // data should be { label: 'FAKE' | 'REAL', confidence: float }
-        setPrediction(data);
-      } else {
-        console.error('Failed to get prediction:', await response.text());
-      }
-    } catch (error) {
-      console.error('Error sending video chunk:', error);
-    }
-  };
-
-  const startRecording = () => {
-    if (!videoRef.current || !videoRef.current.srcObject) return;
-
-    const stream = videoRef.current.srcObject;
-    let options = { mimeType: 'video/webm' };
-    
-    // Check for supported mimeTypes if webm is not supported by the browser
-    if (!MediaRecorder.isTypeSupported('video/webm')) {
-      options = { mimeType: 'video/mp4' };
-    }
-
-    try {
-      const mediaRecorder = new MediaRecorder(stream, options);
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = async (event) => {
-        if (event.data && event.data.size > 0) {
-          await sendVideoChunk(event.data);
-        }
-      };
-
-      // Start recording and slice chunks every 2000 milliseconds
-      mediaRecorder.start(2000);
-    } catch (error) {
-      console.error('Error starting MediaRecorder:', error);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
+  // Frame Extraction Logic
   useEffect(() => {
+    let intervalId;
     if (isDetecting) {
-      startRecording();
-    } else {
-      stopRecording();
+      intervalId = setInterval(() => {
+        captureAndSendFrame();
+      }, 2000);
     }
-
-    return () => {
-      stopRecording();
-    };
+    return () => clearInterval(intervalId);
   }, [isDetecting]);
+
+  const captureAndSendFrame = async () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    if (!video || !canvas) return;
+
+    // Set canvas size to match video feed
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert to JPEG image blob
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+
+      const formData = new FormData();
+      // Notice we are sending it as an image file now
+      formData.append('chunk', blob, 'frame.jpg'); 
+
+      try {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        const response = await fetch(`${backendUrl}/api/detect`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setPrediction(data);
+        } else {
+          console.error('Failed to get prediction:', await response.text());
+        }
+      } catch (error) {
+        console.error('Error sending image frame:', error);
+      }
+    }, 'image/jpeg', 0.8);
+  };
 
   const toggleDetection = () => {
     setIsDetecting(!isDetecting);
@@ -130,6 +107,9 @@ export default function Detector() {
             muted
             className="w-full h-auto object-cover"
           />
+          
+          {/* Hidden Canvas required for extracting the image */}
+          <canvas ref={canvasRef} className="hidden" />
           
           {/* Scanning line animation when detecting */}
           {isDetecting && (

@@ -2,17 +2,60 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const webhookRoutes = require('./routes/webhookRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const MediaAnalysis = require('./models/MediaAnalysis');
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Adjust for production
+    methods: ["GET", "POST"]
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, {
 })
-.then(() => console.log('MongoDB connected successfully'))
+.then(() => {
+  console.log('MongoDB connected successfully');
+  
+  // Initialize Change Streams
+  const changeStream = MediaAnalysis.watch();
+  changeStream.on('change', (change) => {
+    if (change.operationType === 'update') {
+      const updatedFields = change.updateDescription.updatedFields;
+      // If status changed to completed, broadcast to the frontend
+      if (updatedFields && updatedFields.status === 'completed') {
+         // Fetch the full updated document to send to the frontend
+         MediaAnalysis.findById(change.documentKey._id).then(doc => {
+            if (doc) {
+               console.log(`[ChangeStream] Document ${doc._id} completed. Broadcasting result...`);
+               // We emit the event specifically tagged with the documentId so frontend rooms/listeners can catch it
+               io.emit(`analysis_complete_${doc._id}`, doc);
+            }
+         });
+      }
+    }
+  });
+})
 .catch((err) => console.error('MongoDB connection error:', err));
+
+// Socket.io connection event
+io.on('connection', (socket) => {
+  console.log('Client connected to Socket.io:', socket.id);
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
 
 // Standard middleware
 app.use(cors());
@@ -26,6 +69,7 @@ app.use(express.json({
 
 // Routes
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/upload', uploadRoutes);
 
 const detectorRoutes = require('./routes/detectorRoutes');
 app.use('/api/detect', detectorRoutes);
@@ -36,6 +80,6 @@ app.get('/', (req, res) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
