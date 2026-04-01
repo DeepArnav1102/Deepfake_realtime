@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { UserButton } from '@clerk/clerk-react';
 
 export default function Detector() {
@@ -28,18 +28,7 @@ export default function Detector() {
     };
   }, []);
 
-  // Frame Extraction Logic
-  useEffect(() => {
-    let intervalId;
-    if (isDetecting) {
-      intervalId = setInterval(() => {
-        captureAndSendFrame();
-      }, 2000);
-    }
-    return () => clearInterval(intervalId);
-  }, [isDetecting]);
-
-  const captureAndSendFrame = async () => {
+  const captureAndSendFrame = useCallback(async () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     
@@ -57,7 +46,6 @@ export default function Detector() {
       if (!blob) return;
 
       const formData = new FormData();
-      // Notice we are sending it as an image file now
       formData.append('chunk', blob, 'frame.jpg'); 
 
       try {
@@ -77,10 +65,21 @@ export default function Detector() {
         console.error('Error sending image frame:', error);
       }
     }, 'image/jpeg', 0.8);
-  };
+  }, []);
+
+  // Frame Extraction Logic
+  useEffect(() => {
+    let intervalId;
+    if (isDetecting) {
+      intervalId = setInterval(() => {
+        captureAndSendFrame();
+      }, 2000);
+    }
+    return () => clearInterval(intervalId);
+  }, [isDetecting, captureAndSendFrame]);
 
   const toggleDetection = () => {
-    setIsDetecting(!isDetecting);
+    setIsDetecting(prev => !prev);
   };
 
   return (
@@ -88,7 +87,7 @@ export default function Detector() {
       <header className="fixed top-0 w-full px-8 py-4 flex justify-between items-center z-50 bg-[#050505]/80 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg bg-linear-to-br from-violet-500 to-purple-600"></div>
-          <span className="text-[13px] font-semibold tracking-tight">DeepfakeRT Detector (Live Stream)</span>
+          <span className="text-[13px] font-semibold tracking-tight">DeepSheild.ai Scanner (Live Stream)</span>
         </div>
         <UserButton
           afterSignOutUrl="/"

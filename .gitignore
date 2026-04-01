@@ -22,6 +22,8 @@ server/__pycache__/
 venv/
 .env/
 ENV/
+my_data/
+my_videos/
 
 # Editor / IDE
 .vscode/
