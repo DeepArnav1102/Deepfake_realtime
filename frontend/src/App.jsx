@@ -3,6 +3,7 @@ import { ClerkLoading, ClerkLoaded, SignedIn, SignedOut } from '@clerk/clerk-rea
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
 import DetectorStudio from './pages/DetectorStudio';
+import LandingPage from './pages/LandingPage';
 
 function App() {
   return (
@@ -33,16 +34,7 @@ function App() {
           } />
 
           {/* Base Route */}
-          <Route path="/" element={
-            <>
-              <SignedIn>
-                <Navigate to="/dashboard" replace />
-              </SignedIn>
-              <SignedOut>
-                <Navigate to="/sign-in" replace />
-              </SignedOut>
-            </>
-          } />
+          <Route path="/" element={<LandingPage />} />
 
           {/* Secure Dashboard Route */}
           <Route path="/dashboard" element={

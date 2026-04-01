@@ -28,11 +28,11 @@ export default function AuthPage({ mode = 'signin' }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
 
         <div className="absolute bottom-12 left-12 z-10">
-          <p className="text-violet-400 text-[10px] font-bold tracking-[0.25em] uppercase mb-2">
+          <p className="text-cyan-400 text-[10px] font-bold tracking-[0.25em] uppercase mb-2">
             Powered by AI
           </p>
           <h2 className="text-white text-3xl font-bold tracking-tight leading-snug mb-2">
-            Deepfake Realtime
+            DeepSheild.ai
           </h2>
           <p className="text-slate-400 text-sm max-w-[320px] leading-relaxed">
             Uncover manipulated media with our enterprise-grade detection technology. Secure, fast, and highly accurate.
@@ -57,11 +57,11 @@ export default function AuthPage({ mode = 'signin' }) {
                 appearance={{
                   baseTheme: dark,
                   variables: {
-                    colorPrimary: '#8b5cf6', // DeepfakeRT Violet
+                    colorPrimary: '#22d3ee', // DeepSheild Cyan
                     colorBackground: '#0a0a0a', 
                   },
                   elements: {
-                    card: "border border-white/10 shadow-2xl shadow-black/80", 
+                    card: "border border-white/10 shadow-2xl shadow-cyan-900/40", 
                     footerAction: "hidden", // Hide Clerk's own sign-up link (we replace it below)
                   }
                 }}
@@ -76,11 +76,11 @@ export default function AuthPage({ mode = 'signin' }) {
                 appearance={{
                   baseTheme: dark,
                   variables: {
-                    colorPrimary: '#8b5cf6', // DeepfakeRT Violet
+                    colorPrimary: '#22d3ee', // DeepSheild Cyan
                     colorBackground: '#0a0a0a', 
                   },
                   elements: {
-                    card: "border border-white/10 shadow-2xl shadow-black/80", 
+                    card: "border border-white/10 shadow-2xl shadow-cyan-900/40", 
                     footerAction: "hidden", // Hide Clerk's own sign-in link
                   }
                 }}

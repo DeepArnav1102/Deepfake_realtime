@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserButton } from '@clerk/clerk-react';
 import {
   Camera, CameraOff, UploadCloud, Video, Image as ImageIcon,
-  Activity, CheckCircle2, AlertCircle, Zap, Shield, Eye,
-  ChevronRight, Cpu, Layers, BarChart3
+  Activity, CheckCircle2, AlertCircle, Zap, Shield,
+  ChevronRight, Layers
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 
+/* ─────────────────────────────────────────────
+   BACKEND / SOCKET — DO NOT TOUCH
+───────────────────────────────────────────── */
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const socket = io(backendUrl);
 
@@ -16,13 +20,10 @@ const NAV_ITEMS = [
   { id: 'image', label: 'Image Upload',  icon: ImageIcon, desc: 'JPG, PNG files'   },
 ];
 
-const STATS = [
-  { label: 'Accuracy',   value: '99.2%',  icon: BarChart3 },
-  { label: 'Model',      value: 'ResNet', icon: Cpu       },
-  { label: 'Detections', value: 'Live',   icon: Eye       },
-];
-
 export default function DetectorStudio() {
+  const navigate = useNavigate();
+
+  /* ── state (unchanged) ── */
   const [activeTab, setActiveTab] = useState('live');
 
   const videoRef   = useRef(null);
@@ -37,6 +38,7 @@ export default function DetectorStudio() {
   const [uploadResult, setUploadResult] = useState(null);
   const [isDragging,   setIsDragging]   = useState(false);
 
+  /* ── effects (unchanged) ── */
   useEffect(() => {
     if (activeTab === 'live' && isCameraActive) startCamera();
     else { stopCamera(); setIsLiveAnalyzing(false); }
@@ -49,6 +51,7 @@ export default function DetectorStudio() {
     return () => clearInterval(id);
   }, [isLiveAnalyzing]);
 
+  /* ── camera logic (unchanged) ── */
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -84,6 +87,7 @@ export default function DetectorStudio() {
     }, 'image/jpeg', 0.8);
   };
 
+  /* ── file handling (unchanged) ── */
   const handleFileSelect = (file) => {
     if (!file) return;
     setSelectedFile(file);
@@ -123,351 +127,805 @@ export default function DetectorStudio() {
     }
   };
 
+  /* ── derived (unchanged) ── */
   const isFake = livePrediction?.label === 'FAKE' || uploadResult?.label === 'FAKE';
 
-  /* ─── accent colours (no purple — using cyan / sky) ─── */
-  const accent      = 'cyan';
-  const accentText  = 'text-cyan-400';
-  const accentBg    = 'bg-cyan-500/20';
-  const accentBorder= 'border-cyan-500/30';
-
+  /* ─────────────────────────────────────────────
+     RENDER — redesigned UI, all logic wired same
+  ───────────────────────────────────────────── */
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }}
-         className="h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden">
-
+    <div
+      style={{ fontFamily: "'DM Sans', sans-serif" }}
+      className="h-screen w-screen bg-[#080808] text-white flex flex-col overflow-hidden"
+    >
       <style>{`
-        @keyframes scan {
-          0%   { top: 0;    opacity: 1; }
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+        @keyframes scan-line {
+          0%   { top: 0%;   opacity: 1; }
           49%  { top: 100%; opacity: 1; }
           50%  { top: 100%; opacity: 0; }
-          51%  { top: 0;    opacity: 0; }
+          51%  { top: 0%;   opacity: 0; }
           100% { top: 100%; opacity: 1; }
         }
-        @keyframes pulse-ring {
-          0%   { transform: scale(1);   opacity: .6; }
-          100% { transform: scale(1.7); opacity: 0;  }
+        @keyframes pulse-dot {
+          0%   { transform: scale(1);   opacity: .8; }
+          100% { transform: scale(1.9); opacity: 0;  }
         }
-        @keyframes float {
-          0%,100% { transform: translateY(0);   }
-          50%     { transform: translateY(-6px); }
+        @keyframes float-up {
+          0%, 100% { transform: translateY(0);    }
+          50%      { transform: translateY(-7px);  }
         }
-        @keyframes shimmer-cyan {
+        @keyframes spin-fade {
+          to { transform: rotate(360deg); }
+        }
+        .scan-anim {
+          position: absolute; left: 0; width: 100%; height: 1.5px;
+          background: linear-gradient(90deg, transparent 0%, #34d399 50%, transparent 100%);
+          box-shadow: 0 0 14px 4px rgba(52,211,153,.5);
+          animation: scan-line 2s linear infinite;
+        }
+        .pulse-dot  { animation: pulse-dot 1.6s ease-out infinite; }
+        .float-anim { animation: float-up 3.5s ease-in-out infinite; }
+        .spin-anim  { animation: spin-fade 0.8s linear infinite; }
+
+        /* Green shimmer CTA */
+        @keyframes shimmer-g {
           0%   { background-position: -200% 0; }
           100% { background-position:  200% 0; }
         }
-        .scan-anim {
-          position: absolute; left: 0; width: 100%; height: 2px;
-          background: linear-gradient(90deg, transparent, #22d3ee, transparent);
-          box-shadow: 0 0 18px 5px rgba(34,211,238,.45);
-          animation: scan 2s linear infinite;
-        }
-        .pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
-        .float-anim { animation: float 3s ease-in-out infinite; }
-        .shimmer-cyan {
-          background: linear-gradient(90deg,#0891b2 0%,#22d3ee 40%,#0891b2 100%);
+        .btn-shimmer {
+          background: linear-gradient(90deg,#059669 0%,#34d399 40%,#059669 100%);
           background-size: 200% 100%;
-          animation: shimmer-cyan 2.5s linear infinite;
+          animation: shimmer-g 2.5s linear infinite;
         }
-        ::-webkit-scrollbar { width: 4px; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar       { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(34,211,238,.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(52,211,153,.15); border-radius: 10px; }
       `}</style>
 
-      {/* ════════ HEADER ════════ */}
-      <header className="shrink-0 h-16 flex items-center justify-between px-6
-                         bg-black/70 backdrop-blur-2xl border-b border-white/[0.06] z-50">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600
-                            flex items-center justify-center shadow-lg shadow-cyan-500/30">
-              <Shield size={17} className="text-white" />
-            </div>
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400
-                             rounded-full border-2 border-black"/>
+      {/* ══════════════════════════════════════
+          HEADER
+      ══════════════════════════════════════ */}
+      <header
+        style={{
+          flexShrink: 0,
+          height: 60,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 24px',
+          background: 'rgba(8,8,8,0.85)',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          zIndex: 50,
+        }}
+      >
+        {/* Logo — click to go home */}
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px 6px',
+            borderRadius: 10,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+          title="Back to home"
+        >
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg,#34d399,#22d3ee)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+          >
+            <Shield size={15} color="#080808" strokeWidth={2.5} />
+            {/* Online dot */}
+            <span
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#34d399',
+                border: '2px solid #080808',
+              }}
+            />
           </div>
           <div>
-            <p className="text-[13px] font-semibold tracking-tight leading-none">Deepfake Studio</p>
-            <p className="text-[10px] text-slate-500 mt-0.5 leading-none">AI Detection Platform</p>
+            <p
+              style={{
+                fontFamily: 'Syne, sans-serif',
+                fontWeight: 700,
+                fontSize: 13,
+                color: '#fff',
+                letterSpacing: '-0.01em',
+                lineHeight: 1,
+              }}
+            >
+              DeepSheild<span style={{ color: '#34d399' }}>.ai</span>
+            </p>
+            <p style={{ fontSize: 10, color: '#52525b', marginTop: 2, lineHeight: 1 }}>
+              Detection Studio
+            </p>
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full
-                          bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-medium">
-            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"/>
+        </button>
+
+        {/* Right: status + user */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 12px',
+              borderRadius: 999,
+              border: '1px solid rgba(52,211,153,0.2)',
+              background: 'rgba(52,211,153,0.06)',
+              fontSize: 11,
+              color: '#34d399',
+              fontWeight: 500,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: '#34d399',
+                display: 'inline-block',
+              }}
+            />
             AI Engine Ready
           </div>
-          <UserButton appearance={{ elements: { userButtonAvatarBox: 'w-8 h-8 border border-white/10' } }} />
+          <UserButton appearance={{ elements: { userButtonAvatarBox: 'w-8 h-8' } }} />
         </div>
       </header>
 
-      {/* ════════ BODY — sidebar + main ════════ */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* ══════════════════════════════════════
+          BODY  (sidebar + main)
+      ══════════════════════════════════════ */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
-        {/* ════ SIDEBAR ════ */}
-        <aside className="w-64 shrink-0 flex flex-col overflow-y-auto
-                          bg-[#0d0d0d] border-r border-white/[0.05]">
-
-          {/* Nav */}
-          <div className="p-4 pt-5 border-b border-white/[0.05]">
-            <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-3 px-1">
+        {/* ──────────────────── SIDEBAR ──────────────────── */}
+        <aside
+          style={{
+            width: 220,
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            background: 'rgba(255,255,255,0.015)',
+            borderRight: '1px solid rgba(255,255,255,0.05)',
+          }}
+        >
+          {/* Mode selector */}
+          <div style={{ padding: '20px 14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <p
+              style={{
+                fontSize: 10,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: '#3f3f46',
+                fontWeight: 600,
+                marginBottom: 10,
+                paddingLeft: 6,
+              }}
+            >
               Detection Mode
             </p>
-            <div className="flex flex-col gap-1">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {/* eslint-disable-next-line no-unused-vars */}
               {NAV_ITEMS.map(({ id, label, icon: Icon, desc }) => {
                 const active = activeTab === id;
                 return (
-                  <button key={id}
-                          onClick={() => { setActiveTab(id); setUploadResult(null); setPreviewUrl(null); setSelectedFile(null); }}
-                          className={`relative flex items-center gap-3 px-3 py-3 rounded-xl
-                                      transition-all duration-200 text-left
-                                      ${active
-                                        ? 'bg-cyan-500/10 border border-cyan-500/25 text-white'
-                                        : 'border border-transparent text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
-                                      }`}>
+                  <button
+                    key={id}
+                    onClick={() => {
+                      setActiveTab(id);
+                      setUploadResult(null);
+                      setPreviewUrl(null);
+                      setSelectedFile(null);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '10px 10px',
+                      borderRadius: 12,
+                      border: active ? '1px solid rgba(52,211,153,0.2)' : '1px solid transparent',
+                      background: active ? 'rgba(52,211,153,0.07)' : 'transparent',
+                      color: active ? '#fff' : '#71717a',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s',
+                      position: 'relative',
+                    }}
+                    onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                    onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {/* Active left bar */}
                     {active && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-cyan-400 rounded-full"/>
+                      <span
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: 2,
+                          height: 18,
+                          borderRadius: 10,
+                          background: '#34d399',
+                        }}
+                      />
                     )}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0
-                                     ${active ? 'bg-cyan-500/15 text-cyan-400' : 'bg-white/[0.04] text-slate-500'}`}>
-                      <Icon size={16} />
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 9,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: active ? 'rgba(52,211,153,0.12)' : 'rgba(255,255,255,0.04)',
+                        color: active ? '#34d399' : '#52525b',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Icon size={14} />
                     </div>
-                    <div>
-                      <p className="text-[13px] font-medium leading-none mb-0.5">{label}</p>
-                      <p className="text-[11px] text-slate-500 leading-none">{desc}</p>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: 12, fontWeight: 500, lineHeight: 1, marginBottom: 3 }}>{label}</p>
+                      <p style={{ fontSize: 10, color: '#52525b', lineHeight: 1 }}>{desc}</p>
                     </div>
-                    {active && <ChevronRight size={13} className="ml-auto text-cyan-400 shrink-0"/>}
+                    {active && <ChevronRight size={12} style={{ marginLeft: 'auto', color: '#34d399', flexShrink: 0 }} />}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="p-4 border-b border-white/[0.05]">
-            <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-3 px-1">
-              System Info
+          {/* Live result — only show when there is real data */}
+          <div style={{ padding: '16px 14px', marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <p
+              style={{
+                fontSize: 10,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: '#3f3f46',
+                fontWeight: 600,
+                marginBottom: 10,
+                paddingLeft: 6,
+              }}
+            >
+              Last Verdict
             </p>
-            <div className="flex flex-col gap-1.5">
-              {STATS.map(({ label, value, icon: Icon }) => (
-                <div key={label}
-                     className="flex items-center justify-between px-3 py-2 rounded-lg
-                                bg-white/[0.02] border border-white/[0.05]">
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <Icon size={12}/>
-                    <span className="text-[11px]">{label}</span>
-                  </div>
-                  <span className="text-[11px] font-semibold text-cyan-400">{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Last result */}
-          <div className="p-4 mt-auto">
-            <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-2 px-1">
-              Last Result
-            </p>
-            <div className={`rounded-xl p-3.5 border transition-all duration-500
-                            ${!(livePrediction || uploadResult?.label)
-                              ? 'border-white/[0.06] bg-white/[0.02]'
-                              : isFake
-                                ? 'border-red-500/30 bg-red-500/[0.07]'
-                                : 'border-emerald-500/30 bg-emerald-500/[0.07]'}`}>
+            <div
+              style={{
+                borderRadius: 12,
+                padding: '12px 14px',
+                border: (livePrediction || uploadResult?.label)
+                  ? isFake
+                    ? '1px solid rgba(239,68,68,0.25)'
+                    : '1px solid rgba(52,211,153,0.25)'
+                  : '1px solid rgba(255,255,255,0.06)',
+                background: (livePrediction || uploadResult?.label)
+                  ? isFake
+                    ? 'rgba(239,68,68,0.06)'
+                    : 'rgba(52,211,153,0.06)'
+                  : 'rgba(255,255,255,0.02)',
+                transition: 'all 0.4s ease',
+              }}
+            >
               {(livePrediction || uploadResult?.label) ? (
-                <div className="flex items-center gap-2.5">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {isFake
-                    ? <AlertCircle size={20} className="text-red-400 shrink-0"/>
-                    : <CheckCircle2 size={20} className="text-emerald-400 shrink-0"/>}
+                    ? <AlertCircle size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+                    : <CheckCircle2 size={18} style={{ color: '#34d399', flexShrink: 0 }} />}
                   <div>
-                    <p className={`text-sm font-bold leading-none mb-0.5 ${isFake ? 'text-red-400' : 'text-emerald-400'}`}>
+                    <p
+                      style={{
+                        fontSize: 13,
+                        fontFamily: 'Syne, sans-serif',
+                        fontWeight: 700,
+                        color: isFake ? '#ef4444' : '#34d399',
+                        lineHeight: 1,
+                        marginBottom: 4,
+                      }}
+                    >
                       {livePrediction?.label || uploadResult?.label}
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p style={{ fontSize: 10, color: '#71717a' }}>
                       {((livePrediction?.confidence || uploadResult?.confidence || 0) * 100).toFixed(1)}% confidence
                     </p>
                   </div>
                 </div>
               ) : (
-                <p className="text-[12px] text-slate-600 italic">No result yet</p>
+                <p style={{ fontSize: 11, color: '#3f3f46', fontStyle: 'italic' }}>Awaiting analysis…</p>
               )}
             </div>
           </div>
         </aside>
 
-        {/* ════ MAIN ════ */}
-        <main className="flex-1 overflow-y-auto p-8">
+        {/* ──────────────────── MAIN ──────────────────── */}
+        <main
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            padding: '28px 28px',
+            display: 'flex',
+            flexDirection: 'column',
+            minWidth: 0,
+          }}
+        >
+          {/* Breadcrumb */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 6,
+              fontSize: 11,
+              color: '#52525b',
+            }}
+          >
+            <Layers size={10} />
+            <span>Studio</span>
+            <span style={{ color: '#27272a' }}>/</span>
+            <span style={{ color: '#34d399' }}>
+              {activeTab === 'live' ? 'Live Analysis' : activeTab === 'video' ? 'Video Upload' : 'Image Upload'}
+            </span>
+          </div>
 
-          {/* Page title */}
-          <div className="mb-7">
-            <div className="flex items-center gap-2 text-[11px] text-slate-500 mb-2">
-              <Layers size={11}/> Studio
-              <span className="text-slate-700">/</span>
-              <span className="text-cyan-400 capitalize">
-                {activeTab === 'live' ? 'Live Analysis' : activeTab === 'video' ? 'Video Upload' : 'Image Upload'}
-              </span>
-            </div>
-            <h1 className="text-xl font-bold tracking-tight">
+          {/* Page heading */}
+          <div style={{ marginBottom: 24 }}>
+            <h1
+              style={{
+                fontFamily: 'Syne, sans-serif',
+                fontWeight: 800,
+                fontSize: 20,
+                letterSpacing: '-0.03em',
+                color: '#fff',
+                marginBottom: 4,
+              }}
+            >
               {activeTab === 'live'  && 'Live Stream Analysis'}
               {activeTab === 'video' && 'Video Deepfake Analysis'}
               {activeTab === 'image' && 'Image Deepfake Analysis'}
             </h1>
-            <p className="text-slate-500 text-sm mt-1">
+            <p style={{ fontSize: 13, color: '#71717a', lineHeight: 1.5 }}>
               {activeTab === 'live'  && 'Analyze your webcam feed in real-time using AI inference every 2 seconds.'}
-              {activeTab === 'video' && 'Upload a video file and it will be sent to the AI engine for detection.'}
+              {activeTab === 'video' && 'Upload a video file and let the AI engine run deepfake detection.'}
               {activeTab === 'image' && 'Upload an image to instantly check if it is AI-generated or real.'}
             </p>
           </div>
 
-          {/* ─── LIVE TAB ─── */}
+          {/* ─────────── LIVE TAB ─────────── */}
           {activeTab === 'live' && (
-            <div className="flex flex-col xl:flex-row gap-6">
-              <div className="flex-1 flex flex-col">
-                {/* Camera frame */}
-                <div className="relative rounded-2xl overflow-hidden border border-white/[0.07]
-                                bg-black shadow-2xl shadow-black/60 aspect-video">
-                  {isCameraActive
-                    ? <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover"/>
-                    : <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <div className="float-anim">
-                          <div className="w-20 h-20 rounded-full bg-white/[0.04] border border-white/[0.07]
-                                          flex items-center justify-center">
-                            <CameraOff size={30} className="text-slate-600"/>
-                          </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 220px',
+                gap: 18,
+                flex: 1,
+                minHeight: 0,
+                alignItems: 'start',
+              }}
+            >
+              {/* Video panel */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Viewport */}
+                <div
+                  style={{
+                    position: 'relative',
+                    borderRadius: 18,
+                    overflow: 'hidden',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    background: '#0a0a0a',
+                    aspectRatio: '16/9',
+                    width: '100%',
+                  }}
+                >
+                  {isCameraActive ? (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 12,
+                      }}
+                    >
+                      <div className="float-anim">
+                        <div
+                          style={{
+                            width: 72,
+                            height: 72,
+                            borderRadius: '50%',
+                            border: '1px solid rgba(255,255,255,0.07)',
+                            background: 'rgba(255,255,255,0.03)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <CameraOff size={26} color="#3f3f46" />
                         </div>
-                        <p className="text-slate-500 text-sm font-medium mt-4">Camera is off</p>
-                        <p className="text-slate-700 text-xs mt-1">Enable camera to begin</p>
                       </div>
-                  }
+                      <p style={{ fontSize: 13, color: '#52525b', fontWeight: 500 }}>Camera is off</p>
+                      <p style={{ fontSize: 11, color: '#3f3f46' }}>Enable camera below to begin</p>
+                    </div>
+                  )}
 
-                  {isCameraActive && isLiveAnalyzing && <div className="scan-anim"/>}
+                  {/* Scan laser */}
+                  {isCameraActive && isLiveAnalyzing && <div className="scan-anim" />}
 
                   {/* LIVE badge */}
                   {isLiveAnalyzing && (
-                    <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5
-                                    bg-black/70 backdrop-blur-md rounded-full border border-red-500/30">
-                      <span className="relative flex h-2 w-2">
-                        <span className="pulse-ring absolute inline-flex h-full w-full rounded-full bg-red-400"/>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-400"/>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 14,
+                        left: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 7,
+                        padding: '5px 12px',
+                        borderRadius: 999,
+                        border: '1px solid rgba(239,68,68,0.3)',
+                        background: 'rgba(0,0,0,0.6)',
+                        backdropFilter: 'blur(8px)',
+                      }}
+                    >
+                      <span style={{ position: 'relative', width: 8, height: 8, display: 'flex' }}>
+                        <span
+                          className="pulse-dot"
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            borderRadius: '50%',
+                            background: '#ef4444',
+                          }}
+                        />
+                        <span
+                          style={{
+                            position: 'relative',
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            background: '#ef4444',
+                            display: 'inline-block',
+                          }}
+                        />
                       </span>
-                      <span className="text-xs font-semibold text-red-400">LIVE</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', letterSpacing: '0.05em' }}>
+                        LIVE
+                      </span>
                     </div>
                   )}
 
-                  {/* Prediction overlay */}
+                  {/* Result overlay on video */}
                   {livePrediction && isCameraActive && (
-                    <div className={`absolute bottom-4 left-4 right-4 p-3 rounded-xl backdrop-blur-md border
-                                     ${livePrediction.label === 'FAKE'
-                                       ? 'bg-red-900/60 border-red-500/40'
-                                       : 'bg-emerald-900/60 border-emerald-500/40'}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {livePrediction.label === 'FAKE'
-                            ? <AlertCircle size={15} className="text-red-400"/>
-                            : <CheckCircle2 size={15} className="text-emerald-400"/>}
-                          <span className={`font-bold text-sm ${livePrediction.label === 'FAKE' ? 'text-red-300' : 'text-emerald-300'}`}>
-                            {livePrediction.label}
-                          </span>
-                        </div>
-                        <span className="text-xs text-white/60">
-                          {(livePrediction.confidence * 100).toFixed(1)}% confident
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 14,
+                        left: 14,
+                        right: 14,
+                        padding: '10px 14px',
+                        borderRadius: 12,
+                        backdropFilter: 'blur(12px)',
+                        border: livePrediction.label === 'FAKE'
+                          ? '1px solid rgba(239,68,68,0.35)'
+                          : '1px solid rgba(52,211,153,0.35)',
+                        background: livePrediction.label === 'FAKE'
+                          ? 'rgba(20,5,5,0.75)'
+                          : 'rgba(5,20,12,0.75)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {livePrediction.label === 'FAKE'
+                          ? <AlertCircle size={14} style={{ color: '#ef4444' }} />
+                          : <CheckCircle2 size={14} style={{ color: '#34d399' }} />}
+                        <span
+                          style={{
+                            fontFamily: 'Syne, sans-serif',
+                            fontWeight: 700,
+                            fontSize: 13,
+                            color: livePrediction.label === 'FAKE' ? '#ef4444' : '#34d399',
+                          }}
+                        >
+                          {livePrediction.label}
                         </span>
                       </div>
+                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
+                        {(livePrediction.confidence * 100).toFixed(1)}% confident
+                      </span>
                     </div>
                   )}
 
-                  <canvas ref={canvasRef} className="hidden"/>
+                  <canvas ref={canvasRef} style={{ display: 'none' }} />
                 </div>
 
-                {/* Controls */}
-                <div className="flex gap-3 mt-4">
-                  <button onClick={() => setIsCameraActive(!isCameraActive)}
-                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium
-                                     border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08]
-                                     text-slate-300 hover:text-white transition-all">
-                    {isCameraActive ? <><CameraOff size={14}/> Disable Camera</> : <><Camera size={14}/> Enable Camera</>}
+                {/* Controls row */}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => setIsCameraActive(!isCameraActive)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      padding: '10px 18px',
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'rgba(255,255,255,0.04)',
+                      color: '#a1a1aa',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      fontFamily: 'DM Sans, sans-serif',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#a1a1aa'}
+                  >
+                    {isCameraActive ? <><CameraOff size={13} /> Disable Camera</> : <><Camera size={13} /> Enable Camera</>}
                   </button>
-                  <button onClick={() => setIsLiveAnalyzing(!isLiveAnalyzing)}
-                          disabled={!isCameraActive}
-                          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium
-                                      transition-all disabled:opacity-40 disabled:cursor-not-allowed
-                                      ${isLiveAnalyzing
-                                        ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20'
-                                        : 'shimmer-cyan text-white shadow-lg shadow-cyan-500/20'}`}>
-                    <Zap size={14}/>
+
+                  <button
+                    onClick={() => setIsLiveAnalyzing(!isLiveAnalyzing)}
+                    disabled={!isCameraActive}
+                    className={!isLiveAnalyzing ? 'btn-shimmer' : ''}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      padding: '10px 22px',
+                      borderRadius: 12,
+                      border: isLiveAnalyzing ? '1px solid rgba(239,68,68,0.3)' : 'none',
+                      background: isLiveAnalyzing ? 'rgba(239,68,68,0.08)' : undefined,
+                      color: isLiveAnalyzing ? '#ef4444' : '#080808',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      opacity: !isCameraActive ? 0.4 : 1,
+                      pointerEvents: !isCameraActive ? 'none' : 'auto',
+                      transition: 'all 0.15s',
+                      fontFamily: 'DM Sans, sans-serif',
+                    }}
+                  >
+                    <Zap size={13} />
                     {isLiveAnalyzing ? 'Stop Analysis' : 'Start Analysis'}
                   </button>
                 </div>
               </div>
 
-              {/* Info panel */}
-              <div className="xl:w-64 flex flex-col gap-4">
-                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
-                  <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-4">How It Works</p>
-                  {[
-                    { step: '01', text: 'Enable your webcam' },
-                    { step: '02', text: 'Click Start Analysis' },
-                    { step: '03', text: 'Frames captured every 2s' },
-                    { step: '04', text: 'AI returns REAL / FAKE verdict' },
-                  ].map(({ step, text }) => (
-                    <div key={step} className="flex items-start gap-3 mb-3 last:mb-0">
-                      <span className="w-6 h-6 rounded-md bg-cyan-500/15 text-cyan-400 text-[10px]
-                                       font-bold flex items-center justify-center shrink-0">{step}</span>
-                      <p className="text-[12px] text-slate-400 leading-tight pt-1">{text}</p>
-                    </div>
-                  ))}
-                </div>
+              {/* How it works panel */}
+              <div
+                style={{
+                  padding: 20,
+                  borderRadius: 18,
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(255,255,255,0.02)',
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    color: '#3f3f46',
+                    fontWeight: 600,
+                    marginBottom: 16,
+                  }}
+                >
+                  How It Works
+                </p>
+                {[
+                  { step: '01', text: 'Enable your webcam' },
+                  { step: '02', text: 'Click Start Analysis' },
+                  { step: '03', text: 'Frames captured every 2s' },
+                  { step: '04', text: 'AI returns REAL / FAKE verdict' },
+                ].map(({ step, text }) => (
+                  <div key={step} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                    <span
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 7,
+                        background: 'rgba(52,211,153,0.1)',
+                        color: '#34d399',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {step}
+                    </span>
+                    <p style={{ fontSize: 12, color: '#71717a', lineHeight: 1.5, paddingTop: 4 }}>{text}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {/* ─── UPLOAD TABS ─── */}
+          {/* ─────────── UPLOAD TABS (video / image) ─────────── */}
           {(activeTab === 'video' || activeTab === 'image') && (
-            <div className="flex flex-col xl:flex-row gap-6">
-
-              {/* Drop zone */}
-              <div className="flex-1">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 260px',
+                gap: 18,
+                flex: 1,
+                minHeight: 0,
+                alignItems: 'start',
+              }}
+            >
+              {/* Drop zone / preview */}
+              <div>
                 {!previewUrl ? (
-                  <label onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                         onDragLeave={() => setIsDragging(false)}
-                         onDrop={handleDrop}
-                         className={`relative flex flex-col items-center justify-center w-full min-h-[360px]
-                                     rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-300
-                                     ${isDragging
-                                       ? 'border-cyan-400 bg-cyan-500/10 scale-[1.01]'
-                                       : 'border-white/[0.08] hover:border-cyan-500/40 hover:bg-cyan-500/[0.03]'}`}>
-                    <div className="float-anim flex flex-col items-center">
-                      <div className={`w-18 h-18 w-20 h-20 rounded-2xl flex items-center justify-center mb-5
-                                       ${isDragging ? 'bg-cyan-500/20' : 'bg-white/[0.04]'}`}>
-                        <UploadCloud size={32} className={isDragging ? 'text-cyan-400' : 'text-slate-500'}/>
+                  <label
+                    onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minHeight: 340,
+                      borderRadius: 18,
+                      border: isDragging
+                        ? '2px dashed #34d399'
+                        : '2px dashed rgba(255,255,255,0.08)',
+                      background: isDragging
+                        ? 'rgba(52,211,153,0.05)'
+                        : 'transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <div
+                      className="float-anim"
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}
+                    >
+                      <div
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: 18,
+                          border: '1px solid rgba(255,255,255,0.07)',
+                          background: isDragging ? 'rgba(52,211,153,0.1)' : 'rgba(255,255,255,0.03)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <UploadCloud size={28} color={isDragging ? '#34d399' : '#52525b'} />
                       </div>
-                      <p className="text-[15px] font-semibold text-slate-200 mb-2">
-                        {isDragging ? 'Drop it here!' : 'Drag & drop or click to upload'}
-                      </p>
-                      <p className="text-[12px] text-slate-500">
-                        {activeTab === 'video' ? 'Supports MP4, WebM — up to 50MB' : 'Supports JPG, PNG, WEBP — up to 10MB'}
-                      </p>
+                      <div style={{ textAlign: 'center' }}>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: isDragging ? '#fff' : '#a1a1aa', marginBottom: 4 }}>
+                          {isDragging ? 'Drop it here!' : 'Drag & drop or click to upload'}
+                        </p>
+                        <p style={{ fontSize: 12, color: '#52525b' }}>
+                          {activeTab === 'video' ? 'MP4, WebM — max 50MB' : 'JPG, PNG, WEBP — max 10MB'}
+                        </p>
+                      </div>
                     </div>
-                    <input type="file"
-                           accept={activeTab === 'video' ? 'video/*' : 'image/*'}
-                           className="hidden"
-                           onChange={(e) => handleFileSelect(e.target.files[0])}/>
+                    <input
+                      type="file"
+                      accept={activeTab === 'video' ? 'video/*' : 'image/*'}
+                      style={{ display: 'none' }}
+                      onChange={e => handleFileSelect(e.target.files[0])}
+                    />
                   </label>
                 ) : (
-                  <div className="relative w-full min-h-[360px] rounded-2xl overflow-hidden border border-white/[0.07] bg-black">
+                  <div
+                    style={{
+                      position: 'relative',
+                      minHeight: 340,
+                      borderRadius: 18,
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255,255,255,0.07)',
+                      background: '#000',
+                    }}
+                  >
                     {activeTab === 'video'
-                      ? <video src={previewUrl} controls className="w-full h-full object-contain"/>
-                      : <img src={previewUrl} alt="Preview" className="w-full h-full object-contain"/>}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"/>
-                    <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-black/70 backdrop-blur-md rounded-full border border-white/10">
+                      ? <video src={previewUrl} controls style={{ width: '100%', maxHeight: 420, objectFit: 'contain', display: 'block' }} />
+                      : <img src={previewUrl} alt="Preview" style={{ width: '100%', maxHeight: 420, objectFit: 'contain', display: 'block' }} />}
+
+                    {/* Gradient overlay */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 40%)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+
+                    {/* Bottom bar */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 14,
+                        left: 14,
+                        right: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 7,
+                          padding: '5px 12px',
+                          borderRadius: 999,
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          background: 'rgba(0,0,0,0.65)',
+                          backdropFilter: 'blur(8px)',
+                          fontSize: 11,
+                          color: 'rgba(255,255,255,0.7)',
+                          maxWidth: '55%',
+                          overflow: 'hidden',
+                        }}
+                      >
                         {activeTab === 'video'
-                          ? <Video     size={11} className="text-cyan-400"/>
-                          : <ImageIcon size={11} className="text-cyan-400"/>}
-                        <span className="text-xs text-white/80 truncate max-w-[140px]">{selectedFile?.name}</span>
+                          ? <Video size={10} color="#34d399" />
+                          : <ImageIcon size={10} color="#34d399" />}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {selectedFile?.name}
+                        </span>
                       </div>
-                      <button onClick={() => { setPreviewUrl(null); setSelectedFile(null); setUploadResult(null); setIsUploading(false); }}
-                              className="px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/20
-                                         backdrop-blur-md rounded-full border border-white/10 transition-colors">
+                      <button
+                        onClick={() => { setPreviewUrl(null); setSelectedFile(null); setUploadResult(null); setIsUploading(false); }}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 999,
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          background: 'rgba(0,0,0,0.65)',
+                          backdropFilter: 'blur(8px)',
+                          fontSize: 11,
+                          color: '#a1a1aa',
+                          cursor: 'pointer',
+                          fontFamily: 'DM Sans, sans-serif',
+                        }}
+                      >
                         Change file
                       </button>
                     </div>
@@ -476,103 +934,284 @@ export default function DetectorStudio() {
               </div>
 
               {/* Analysis panel */}
-              <div className="xl:w-72 flex flex-col gap-4">
-                <div className="rounded-2xl border border-white/[0.07] bg-[#0d0d0d] p-5 flex flex-col">
-                  <div className="flex items-center gap-2.5 mb-5">
-                    <div className="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center">
-                      <Activity size={15} className="text-cyan-400"/>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Main card */}
+                <div
+                  style={{
+                    padding: 20,
+                    borderRadius: 18,
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(255,255,255,0.02)',
+                  }}
+                >
+                  {/* Panel header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 10,
+                        background: 'rgba(52,211,153,0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Activity size={14} color="#34d399" />
                     </div>
                     <div>
-                      <p className="text-[13px] font-semibold leading-none">Analysis Panel</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">AI-powered detection</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, lineHeight: 1, fontFamily: 'Syne, sans-serif' }}>
+                        Analysis Panel
+                      </p>
+                      <p style={{ fontSize: 10, color: '#52525b', marginTop: 3 }}>AI-powered detection</p>
                     </div>
                   </div>
 
+                  {/* File info */}
                   {selectedFile && (
-                    <div className="mb-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-                      <p className="text-[10px] text-slate-500 mb-1">Selected file</p>
-                      <p className="text-[12px] font-medium text-slate-200 truncate">{selectedFile.name}</p>
-                      <p className="text-[11px] text-slate-600 mt-0.5">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <div
+                      style={{
+                        marginBottom: 14,
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        background: 'rgba(255,255,255,0.02)',
+                      }}
+                    >
+                      <p style={{ fontSize: 10, color: '#52525b', marginBottom: 4 }}>Selected file</p>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: '#d4d4d8',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {selectedFile.name}
+                      </p>
+                      <p style={{ fontSize: 10, color: '#3f3f46', marginTop: 3 }}>
+                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
                     </div>
                   )}
 
-                  <button onClick={handleUploadAndAnalyze}
-                          disabled={!selectedFile || isUploading}
-                          className={`w-full py-3 rounded-xl font-semibold text-sm transition-all
-                                      flex items-center justify-center gap-2
-                                      disabled:opacity-40 disabled:cursor-not-allowed
-                                      ${!selectedFile || isUploading
-                                        ? 'bg-white/[0.05] border border-white/[0.08] text-slate-400'
-                                        : 'shimmer-cyan text-white shadow-lg shadow-cyan-500/20'}`}>
-                    <Zap size={14}/>
-                    {uploadResult?.status === 'uploading'  ? 'Uploading…'     :
-                     uploadResult?.status === 'processing' ? 'Processing…'    :
-                     'Run Deepfake Scan'}
+                  {/* CTA button */}
+                  <button
+                    onClick={handleUploadAndAnalyze}
+                    disabled={!selectedFile || isUploading}
+                    className={!selectedFile || isUploading ? '' : 'btn-shimmer'}
+                    style={{
+                      width: '100%',
+                      padding: '11px 0',
+                      borderRadius: 12,
+                      border: !selectedFile || isUploading ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                      background: !selectedFile || isUploading ? 'rgba(255,255,255,0.04)' : undefined,
+                      color: !selectedFile || isUploading ? '#52525b' : '#080808',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: !selectedFile || isUploading ? 'not-allowed' : 'pointer',
+                      opacity: !selectedFile || isUploading ? 0.6 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 7,
+                      fontFamily: 'DM Sans, sans-serif',
+                    }}
+                  >
+                    {isUploading
+                      ? (
+                        <>
+                          <span
+                            className="spin-anim"
+                            style={{
+                              width: 13,
+                              height: 13,
+                              border: '2px solid rgba(52,211,153,0.3)',
+                              borderTopColor: '#34d399',
+                              borderRadius: '50%',
+                              display: 'inline-block',
+                            }}
+                          />
+                          {uploadResult?.status === 'uploading' ? 'Uploading…' : 'Processing…'}
+                        </>
+                      )
+                      : <><Zap size={13} /> Run Deepfake Scan</>}
                   </button>
 
+                  {/* Status / Result */}
                   {uploadResult && (
-                    <div className="mt-5">
-                      <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-3">
-                        Status & Result
+                    <div style={{ marginTop: 16 }}>
+                      <p
+                        style={{
+                          fontSize: 10,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.1em',
+                          color: '#3f3f46',
+                          fontWeight: 600,
+                          marginBottom: 10,
+                        }}
+                      >
+                        Status &amp; Result
                       </p>
 
+                      {/* Processing state */}
                       {(uploadResult.status === 'uploading' || uploadResult.status === 'processing') && (
-                        <div className="flex items-center gap-3 p-3.5 rounded-xl
-                                        border border-cyan-500/20 bg-cyan-500/[0.07]">
-                          <div className="w-4 h-4 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin shrink-0"/>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 12px',
+                            borderRadius: 12,
+                            border: '1px solid rgba(52,211,153,0.15)',
+                            background: 'rgba(52,211,153,0.05)',
+                          }}
+                        >
+                          <span
+                            className="spin-anim"
+                            style={{
+                              width: 14,
+                              height: 14,
+                              border: '2px solid rgba(52,211,153,0.3)',
+                              borderTopColor: '#34d399',
+                              borderRadius: '50%',
+                              display: 'inline-block',
+                              flexShrink: 0,
+                            }}
+                          />
                           <div>
-                            <p className="text-sm font-medium text-cyan-300">
-                              {uploadResult.status === 'uploading' ? 'Uploading to cloud…' : 'AI is running inference…'}
+                            <p style={{ fontSize: 12, fontWeight: 500, color: '#34d399' }}>
+                              {uploadResult.status === 'uploading' ? 'Uploading to cloud…' : 'AI running inference…'}
                             </p>
-                            <p className="text-[11px] text-cyan-400/50 mt-0.5">Please wait</p>
+                            <p style={{ fontSize: 10, color: 'rgba(52,211,153,0.4)', marginTop: 2 }}>Please wait</p>
                           </div>
                         </div>
                       )}
 
+                      {/* Completed */}
                       {uploadResult.status === 'completed' && (
-                        <div className={`rounded-xl p-5 border text-center
-                                         ${uploadResult.label === 'REAL'
-                                           ? 'border-emerald-500/30 bg-emerald-500/[0.07]'
-                                           : 'border-red-500/30 bg-red-500/[0.07]'}`}>
+                        <div
+                          style={{
+                            padding: '18px 16px',
+                            borderRadius: 14,
+                            border: uploadResult.label === 'REAL'
+                              ? '1px solid rgba(52,211,153,0.25)'
+                              : '1px solid rgba(239,68,68,0.25)',
+                            background: uploadResult.label === 'REAL'
+                              ? 'rgba(52,211,153,0.05)'
+                              : 'rgba(239,68,68,0.05)',
+                            textAlign: 'center',
+                          }}
+                        >
                           {uploadResult.label === 'REAL'
-                            ? <CheckCircle2 size={34} className="text-emerald-400 mx-auto mb-2"/>
-                            : <AlertCircle  size={34} className="text-red-400 mx-auto mb-2"/>}
-                          <p className={`text-2xl font-black tracking-tight mb-1
-                                         ${uploadResult.label === 'REAL' ? 'text-emerald-400' : 'text-red-400'}`}>
+                            ? <CheckCircle2 size={32} style={{ color: '#34d399', margin: '0 auto 8px' }} />
+                            : <AlertCircle size={32} style={{ color: '#ef4444', margin: '0 auto 8px' }} />}
+                          <p
+                            style={{
+                              fontFamily: 'Syne, sans-serif',
+                              fontWeight: 800,
+                              fontSize: 22,
+                              letterSpacing: '-0.03em',
+                              color: uploadResult.label === 'REAL' ? '#34d399' : '#ef4444',
+                              marginBottom: 8,
+                            }}
+                          >
                             {uploadResult.label}
                           </p>
-                          <div className="w-full bg-white/[0.07] rounded-full h-1.5 mt-3 mb-1 overflow-hidden">
-                            <div className={`h-full rounded-full transition-all duration-1000
-                                             ${uploadResult.label === 'REAL' ? 'bg-emerald-400' : 'bg-red-400'}`}
-                                 style={{ width: `${(uploadResult.confidence * 100).toFixed(0)}%` }}/>
+                          {/* Confidence bar */}
+                          <div
+                            style={{
+                              width: '100%',
+                              height: 4,
+                              borderRadius: 10,
+                              background: 'rgba(255,255,255,0.06)',
+                              overflow: 'hidden',
+                              marginBottom: 6,
+                            }}
+                          >
+                            <div
+                              style={{
+                                height: '100%',
+                                borderRadius: 10,
+                                background: uploadResult.label === 'REAL' ? '#34d399' : '#ef4444',
+                                width: `${(uploadResult.confidence * 100).toFixed(0)}%`,
+                                transition: 'width 1s ease',
+                              }}
+                            />
                           </div>
-                          <p className="text-[12px] text-slate-400">
-                            <span className="font-semibold text-white">{(uploadResult.confidence * 100).toFixed(1)}%</span> confidence
+                          <p style={{ fontSize: 11, color: '#71717a' }}>
+                            <span style={{ color: '#fff', fontWeight: 600 }}>
+                              {(uploadResult.confidence * 100).toFixed(1)}%
+                            </span>{' '}
+                            confidence
                           </p>
                         </div>
                       )}
 
+                      {/* Failed */}
                       {uploadResult.status === 'failed' && (
-                        <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/[0.07] text-center">
-                          <AlertCircle size={20} className="text-red-400 mx-auto mb-2"/>
-                          <p className="text-sm text-red-400 font-medium">Analysis failed</p>
-                          <p className="text-[11px] text-red-400/50 mt-0.5">Check connection and try again</p>
+                        <div
+                          style={{
+                            padding: '14px',
+                            borderRadius: 12,
+                            border: '1px solid rgba(239,68,68,0.2)',
+                            background: 'rgba(239,68,68,0.05)',
+                            textAlign: 'center',
+                          }}
+                        >
+                          <AlertCircle size={20} style={{ color: '#ef4444', margin: '0 auto 6px' }} />
+                          <p style={{ fontSize: 12, color: '#ef4444', fontWeight: 500 }}>Analysis failed</p>
+                          <p style={{ fontSize: 10, color: 'rgba(239,68,68,0.45)', marginTop: 3 }}>
+                            Check connection and retry
+                          </p>
                         </div>
                       )}
                     </div>
                   )}
                 </div>
 
-                {/* Tips */}
-                <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d0d] p-4">
-                  <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold mb-3">Tips</p>
-                  <ul className="space-y-2">
+                {/* Tips card */}
+                <div
+                  style={{
+                    padding: '16px 18px',
+                    borderRadius: 16,
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    background: 'rgba(255,255,255,0.015)',
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.1em',
+                      color: '#3f3f46',
+                      fontWeight: 600,
+                      marginBottom: 12,
+                    }}
+                  >
+                    Tips
+                  </p>
+                  <ul style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {(activeTab === 'video'
                       ? ['Clear face visibility improves accuracy', 'Shorter clips process faster', 'MP4 recommended']
-                      : ['High resolution gives better results', 'Face should be clearly visible', 'Avoid heavy filters']
+                      : ['Use high resolution images', 'Face should be clearly visible', 'Avoid heavy filters']
                     ).map(tip => (
-                      <li key={tip} className="flex items-start gap-2 text-[12px] text-slate-500">
-                        <span className="w-1 h-1 bg-cyan-500 rounded-full mt-1.5 shrink-0"/>
+                      <li
+                        key={tip}
+                        style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11, color: '#71717a' }}
+                      >
+                        <span
+                          style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: '50%',
+                            background: '#34d399',
+                            flexShrink: 0,
+                            marginTop: 5,
+                          }}
+                        />
                         {tip}
                       </li>
                     ))}
