@@ -5,7 +5,7 @@ Detect deepfakes live from a webcam, a video-call window, or a video file. Faces
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C)
 ![OpenCV](https://img.shields.io/badge/OpenCV-4.9+-green)
-![License](https://img.shields.io/badge/License-MIT-lightgrey)
+
 
 > Forked from [pseudoHacks/Deepfake_realtime](https://github.com/pseudoHacks/Deepfake_realtime).
 
